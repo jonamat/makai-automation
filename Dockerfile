@@ -4,6 +4,9 @@ WORKDIR /build
 # Import the codebase
 COPY . .
 
+# Install dependencies
+RUN go mod vendor
+
 # Create server binary, fetch & convert icons, generate init KML
 RUN go build -mod vendor -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/makai-automation ./cmd/main.go
 
