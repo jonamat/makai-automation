@@ -1,5 +1,5 @@
 FROM golang:1.22.0-bullseye AS builder
-WORKDIR /build
+WORKDIR /builder
 
 # Import the codebase
 COPY . .
@@ -7,14 +7,16 @@ COPY . .
 # Install dependencies
 RUN go mod vendor
 
-# Create server binary, fetch & convert icons, generate init KML
-RUN CGO_ENABLED=1 go build -mod vendor -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/makai-automation ./cmd/main.go
+# Compile the source
+RUN CGO_ENABLED=0 go build -mod vendor -a -tags netgo -ldflags '-w -extldflags "-static"' -o ./bin/build ./cmd/main.go
+
 
 FROM scratch AS runner
-WORKDIR /app
+# FROM golang:1.22.0-bullseye AS runner
+WORKDIR /
 
-# Server binary from builder
-COPY --from=builder /build/bin/makai-automation ./bin/makai-automation
+# Copy binary from builder
+COPY --from=builder /builder/bin/build ./bin/build
 
-# Run the server
-ENTRYPOINT ["/app/bin/makai-automation"]
+# Run the binary
+CMD ["/bin/build"]
