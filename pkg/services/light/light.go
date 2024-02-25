@@ -10,6 +10,9 @@ import (
 )
 
 const AUTOMATION_TOPIC = "aut/light"
+const LIGHT_LEVEL_TOPIC = "aut/light/level"
+const LIGHT_LEVEL_SET_TOPIC = "aut/light/level/set"
+
 const DEFAULT_ENABLED = true
 const DEFAULT_LIGHT_LEVEL = 255
 
@@ -22,7 +25,11 @@ func StartService() {
 	fmt.Println("Starting lights job...")
 
 	mqttClient = utils.CreateMqttClient()
+	defer mqttClient.Disconnect(250)
 	dbClient = utils.CreateDbClient()
+	defer dbClient.Close()
+
+	setupDb(dbClient)
 
 	mqttClient.Subscribe(AUTOMATION_TOPIC, 0, func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
@@ -38,7 +45,8 @@ func StartService() {
 	})
 
 	// first start
-	if getEnabled() {
+	enabled, _ := getEnabled()
+	if enabled {
 		enable(mqttClient)
 	}
 
@@ -48,7 +56,7 @@ func StartService() {
 
 func enable(mqttClient mqtt.Client) {
 	// getters and setters
-	mqttClient.Subscribe("aut/light/level", 0, func(client mqtt.Client, msg mqtt.Message) {
+	mqttClient.Subscribe(LIGHT_LEVEL_SET_TOPIC, 0, func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
 
 		level, err := strconv.Atoi(string(msg.Payload()))
@@ -57,7 +65,13 @@ func enable(mqttClient mqtt.Client) {
 			return
 		}
 
-		setLightLevel(level)
+		err = setLightLevel(level)
+		if err != nil {
+			fmt.Println("Error setting light level: ", err)
+			return
+		}
+
+		mqttClient.Publish(LIGHT_LEVEL_TOPIC, 0, false, fmt.Sprintf("%d", level))
 	})
 
 	// automation tasks
@@ -66,7 +80,12 @@ func enable(mqttClient mqtt.Client) {
 
 		switch string(msg.Payload()) {
 		case "ON":
-			mqttClient.Publish("dev/main-light/set", 0, false, fmt.Sprintf("SET %d", getLightLevel()))
+			level, err := getLightLevel()
+			if err != nil {
+				fmt.Println("Error getting light level: ", err)
+				return
+			}
+			mqttClient.Publish("dev/main-light/set", 0, false, fmt.Sprintf("SET %d", level))
 		case "OFF":
 			mqttClient.Publish("dev/main-light/set", 0, false, fmt.Sprintf("SET %d", 0))
 		}
@@ -79,5 +98,5 @@ func disable(mqttClient mqtt.Client) {
 
 	// unsubscribtions
 	mqttClient.Unsubscribe("dev/cabin-pir")
-	mqttClient.Unsubscribe("aut/light/level")
+	mqttClient.Unsubscribe(LIGHT_LEVEL_TOPIC)
 }

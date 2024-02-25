@@ -1,24 +1,25 @@
 package lights
 
 import (
-	"fmt"
+	"strconv"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/jonamat/makai-automations/pkg/utils"
 )
 
-func getEnabled() bool {
+const (
+	ENABLED_KEY     = "light-enabled"
+	LIGHT_LEVEL_KEY = "light-level"
+)
+
+func getEnabled() (bool, error) {
 	var enabled bool
 
 	err := dbClient.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("light/enabled"))
+		item, err := txn.Get([]byte(ENABLED_KEY))
 		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				setEnabled(DEFAULT_ENABLED)
-				item, _ = txn.Get([]byte("light/enabled"))
-			} else {
-				return err
-			}
+			return err
+
 		}
 
 		err = item.Value(func(val []byte) error {
@@ -27,34 +28,24 @@ func getEnabled() bool {
 		})
 		return err
 	})
-	if err != nil {
-		fmt.Println("Error getting light/enabled: ", err)
-	}
 
-	return enabled
+	return enabled, err
 }
 
-func setEnabled(value bool) {
+func setEnabled(value bool) error {
 	err := dbClient.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte("light/enabled"), utils.BoolToBytes(value))
+		return txn.Set([]byte(ENABLED_KEY), utils.BoolToBytes(value))
 	})
-	if err != nil {
-		fmt.Println("Error setting light/enabled: ", err)
-	}
 
+	return err
 }
 
-func getLightLevel() int {
+func getLightLevel() (int, error) {
 	var level int
 
 	err := dbClient.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte("light/level"))
+		item, err := txn.Get([]byte(LIGHT_LEVEL_KEY))
 		if err != nil {
-			if err == badger.ErrKeyNotFound {
-				setLightLevel(DEFAULT_LIGHT_LEVEL)
-				item, _ = txn.Get([]byte("light/level"))
-				return nil
-			}
 			return err
 		}
 
@@ -62,20 +53,42 @@ func getLightLevel() int {
 			level = int(val[0])
 			return nil
 		})
+
 		return err
 	})
-	if err != nil {
-		fmt.Println("Error getting light/level: ", err)
-	}
 
-	return level
+	return level, err
 }
 
-func setLightLevel(value int) {
+func setLightLevel(value int) error {
 	err := dbClient.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte("light/level"), []byte{byte(value)})
+		return txn.Set([]byte(LIGHT_LEVEL_KEY), []byte{byte(value)})
+	})
+
+	return err
+}
+
+func setupDb(db *badger.DB) {
+	err := db.Update(func(txn *badger.Txn) error {
+		_, err := txn.Get([]byte(ENABLED_KEY))
+		if err == badger.ErrKeyNotFound {
+			err = txn.Set([]byte(ENABLED_KEY), []byte(utils.BoolToBytes(DEFAULT_ENABLED)))
+			if err != nil {
+				return err
+			}
+		}
+
+		_, err = txn.Get([]byte(LIGHT_LEVEL_KEY))
+		if err == badger.ErrKeyNotFound {
+			err = txn.Set([]byte(LIGHT_LEVEL_KEY), []byte(strconv.Itoa(DEFAULT_LIGHT_LEVEL)))
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
-		fmt.Println("Error setting light/level: ", err)
+		panic(err)
 	}
 }
