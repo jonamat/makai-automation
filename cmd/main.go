@@ -7,7 +7,7 @@ import (
 	alarm "github.com/jonamat/makai-automations/pkg/services/alarm"
 	clock "github.com/jonamat/makai-automations/pkg/services/clock"
 	energy "github.com/jonamat/makai-automations/pkg/services/energy"
-	lights "github.com/jonamat/makai-automations/pkg/services/lights"
+	light "github.com/jonamat/makai-automations/pkg/services/light"
 )
 
 func main() {
@@ -35,7 +35,7 @@ func main() {
 	go alarm.StartService()
 	go clock.StartService()
 	go energy.StartService()
-	go lights.StartService()
+	go light.StartService()
 
 	// keep the main process running
 	select {}
