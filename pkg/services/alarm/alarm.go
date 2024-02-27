@@ -9,7 +9,7 @@ import (
 	"github.com/jonamat/makai-automations/pkg/utils"
 )
 
-const ENABLED_TOPIC = "aut/light/enabled"
+const ENABLED_TOPIC = "aut/alarm/enabled"
 
 const DEFAULT_ENABLED = true
 
