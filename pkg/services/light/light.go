@@ -102,7 +102,6 @@ func disable(mqttClient mqtt.Client) {
 	// termination tasks
 	mqttClient.Publish("dev/main-light/set", 0, false, fmt.Sprintf("SET %d", 0))
 
-	// unsubscribtions
-	mqttClient.Unsubscribe(ENABLED_TOPIC + "/set")
-	mqttClient.Unsubscribe(LIGHT_LEVEL_TOPIC + "/set")
+	// unsubscribe to automation tasks
+	mqttClient.Unsubscribe("dev/cabin-pir")
 }
