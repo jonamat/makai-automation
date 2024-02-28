@@ -60,14 +60,14 @@ func StartService() {
 
 func enable() {
 	// automation tasks
-	mqttClient.Subscribe("dev/cabin-pir", 0, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
+	// mqttClient.Subscribe("dev/cabin-pir", 0, func(client mqtt.Client, msg mqtt.Message) {
+	// 	fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
 
-		switch string(msg.Payload()) {
-		case "ON":
-			alarmCycle()
-		}
-	})
+	// 	switch string(msg.Payload()) {
+	// 	case "ON":
+	// 		alarmCycle()
+	// 	}
+	// })
 
 	mqttClient.Subscribe("dev/cabin-door-sensor", 0, func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
