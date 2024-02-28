@@ -2,12 +2,14 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	alarm "github.com/jonamat/makai-automations/pkg/services/alarm"
 	clock "github.com/jonamat/makai-automations/pkg/services/clock"
 	energy "github.com/jonamat/makai-automations/pkg/services/energy"
 	light "github.com/jonamat/makai-automations/pkg/services/light"
+	"github.com/jonamat/makai-automations/pkg/utils"
 )
 
 func main() {
@@ -30,6 +32,11 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// create db instance
+	db := utils.CreateDbClient()
+	defer db.Close()
+	time.Sleep(1 * time.Second)
 
 	// Start all services
 	go alarm.StartService()
