@@ -11,13 +11,16 @@ import (
 
 const ENABLED_TOPIC = "aut/alarm/enabled"
 
-const DEFAULT_ENABLED = true
+const DEFAULT_ENABLED = false
+const DEFAULT_REGRET_TIME = 5 * time.Second
 
 var (
 	mqttClient     mqtt.Client
 	dbClient       *badger.DB
 	alarmIsCycling = false
 )
+
+var stopCycle = make(chan bool)
 
 func StartService() {
 	fmt.Println("Starting alarm job...")
@@ -46,6 +49,16 @@ func StartService() {
 			setEnabled(false)
 			disable(mqttClient)
 			mqttClient.Publish(ENABLED_TOPIC, 0, false, "OFF")
+		case "STATE":
+			{
+				enabled, _ := getEnabled()
+				state := "OFF"
+				if enabled {
+					state = "ON"
+				}
+
+				mqttClient.Publish(ENABLED_TOPIC, 0, false, state)
+			}
 		}
 	})
 
@@ -74,7 +87,7 @@ func enable() {
 
 		switch string(msg.Payload()) {
 		case "ON":
-			alarmCycle()
+			go alarmCycle(stopCycle)
 		}
 	})
 
@@ -83,54 +96,75 @@ func enable() {
 
 		switch string(msg.Payload()) {
 		case "ON":
-			alarmCycle()
+			go alarmCycle(stopCycle)
 		}
 	})
 }
 
 func disable(mqttClient mqtt.Client) {
 	// termination tasks
+	stopCycle <- true
 	unFire()
 
-	// unsubscribtions
-	mqttClient.Unsubscribe(ENABLED_TOPIC + "/set")
+	// unsubscribe to automation tasks
+	mqttClient.Unsubscribe("dev/cabin-pir")
+	mqttClient.Unsubscribe("dev/cabin-door-sensor")
+	mqttClient.Unsubscribe("dev/van-doors")
 }
 
-func alarmCycle() {
+func alarmCycle(stopCycle chan bool) {
 	if alarmIsCycling {
 		return
 	} else {
 		alarmIsCycling = true
 	}
 
-	// Alarm on for 1 second
+	// First signal the alarm armed with a 1/2 second fire
+	timer := time.NewTimer(500 * time.Millisecond)
 	fire()
-	time.Sleep(1 * time.Second)
+	select {
+	case <-timer.C:
+		break
+	case <-stopCycle:
+		alarmIsCycling = false
+		return
+	}
 	unFire()
 
-	// Wait for 7 seconds to regret
-	time.Sleep(7 * time.Second)
-
-	enabled, _ := getEnabled()
-	if !enabled {
+	// Wait DEFAULT_REGRET_TIME seconds to regret the chooses of your life
+	timer.Reset(DEFAULT_REGRET_TIME * time.Second)
+	select {
+	case <-timer.C:
+		break
+	case <-stopCycle:
 		alarmIsCycling = false
 		return
 	}
 
-	// Alarm on for 2 minutes
+	// Fire on for 2 minutes
 	fire()
-	time.Sleep(2 * time.Minute)
-	unFire()
+	timer.Reset(2 * time.Minute)
+	select {
+	case <-timer.C:
+		break
+	case <-stopCycle:
+		alarmIsCycling = false
+		unFire()
+		return
+	}
 
+	unFire()
 	alarmIsCycling = false
 }
 
 func fire() {
+	fmt.Println("🔔 Firing alarm!")
 	mqttClient.Publish("dev/cabin-alarm/set", 0, false, "ON")
 	mqttClient.Publish("dev/van-alarm/set", 0, false, "ON")
 }
 
 func unFire() {
+	fmt.Println("🔕 Unfiring alarm!")
 	mqttClient.Publish("dev/cabin-alarm/set", 0, false, "OFF")
 	mqttClient.Publish("dev/van-alarm/set", 0, false, "OFF")
 }
