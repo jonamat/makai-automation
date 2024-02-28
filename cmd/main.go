@@ -25,6 +25,10 @@ func main() {
 	keys := []string{
 		"MQTT_BROKER",
 		"MQTT_PORT",
+		"SMS_PHONE_NUMBER",
+		"OPENWRT_URL",
+		"SMS_USERNAME",
+		"SMS_PASSWORD",
 	}
 	for _, key := range keys {
 		if value, ok := os.LookupEnv(key); !ok || value == "" {

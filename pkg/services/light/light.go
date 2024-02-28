@@ -48,6 +48,15 @@ func StartService() {
 			setEnabled(false)
 			disable(mqttClient)
 			mqttClient.Publish(ENABLED_TOPIC, 0, false, "OFF")
+
+		case "STATE":
+			enabled, _ := getEnabled()
+			state := "OFF"
+			if enabled {
+				state = "ON"
+			}
+
+			mqttClient.Publish(ENABLED_TOPIC, 0, false, state)
 		}
 	})
 

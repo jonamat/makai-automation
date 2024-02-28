@@ -50,15 +50,13 @@ func StartService() {
 			disable(mqttClient)
 			mqttClient.Publish(ENABLED_TOPIC, 0, false, "OFF")
 		case "STATE":
-			{
-				enabled, _ := getEnabled()
-				state := "OFF"
-				if enabled {
-					state = "ON"
-				}
-
-				mqttClient.Publish(ENABLED_TOPIC, 0, false, state)
+			enabled, _ := getEnabled()
+			state := "OFF"
+			if enabled {
+				state = "ON"
 			}
+
+			mqttClient.Publish(ENABLED_TOPIC, 0, false, state)
 		}
 	})
 
@@ -143,6 +141,7 @@ func alarmCycle(stopCycle chan bool) {
 
 	// Fire on for 2 minutes
 	fire()
+	utils.SendSMS("Makai alarm fired!")
 	timer.Reset(2 * time.Minute)
 	select {
 	case <-timer.C:
