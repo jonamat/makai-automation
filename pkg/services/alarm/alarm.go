@@ -71,15 +71,6 @@ func StartService() {
 
 func enable() {
 	// automation tasks
-	// mqttClient.Subscribe("dev/cabin-pir", 0, func(client mqtt.Client, msg mqtt.Message) {
-	// 	fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
-
-	// 	switch string(msg.Payload()) {
-	// 	case "ON":
-	// 		alarmCycle()
-	// 	}
-	// })
-
 	mqttClient.Subscribe("dev/cabin-door-sensor", 0, func(client mqtt.Client, msg mqtt.Message) {
 		fmt.Println("Received message on topic: ", msg.Topic(), " with payload: ", string(msg.Payload()))
 
@@ -101,11 +92,14 @@ func enable() {
 
 func disable(mqttClient mqtt.Client) {
 	// termination tasks
-	stopCycle <- true
+	if alarmIsCycling {
+		stopCycle <- true
+	}
+
+	// turn off the alarm if it's on (just in case)
 	unFire()
 
 	// unsubscribe to automation tasks
-	mqttClient.Unsubscribe("dev/cabin-pir")
 	mqttClient.Unsubscribe("dev/cabin-door-sensor")
 	mqttClient.Unsubscribe("dev/van-doors")
 }
@@ -157,13 +151,13 @@ func alarmCycle(stopCycle chan bool) {
 }
 
 func fire() {
-	fmt.Println("🔔 Firing alarm!")
+	fmt.Println("🔔 Alarm fired!")
 	mqttClient.Publish("dev/cabin-alarm/set", 0, false, "ON")
 	mqttClient.Publish("dev/van-alarm/set", 0, false, "ON")
 }
 
 func unFire() {
-	fmt.Println("🔕 Unfiring alarm!")
+	fmt.Println("🔕 Alarm unfired!")
 	mqttClient.Publish("dev/cabin-alarm/set", 0, false, "OFF")
 	mqttClient.Publish("dev/van-alarm/set", 0, false, "OFF")
 }
