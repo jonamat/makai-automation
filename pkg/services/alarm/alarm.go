@@ -2,6 +2,7 @@ package alarm
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -15,15 +16,18 @@ const DEFAULT_ENABLED = false
 const DEFAULT_REGRET_TIME = 5 * time.Second
 
 var (
-	mqttClient     mqtt.Client
-	dbClient       *badger.DB
-	alarmIsCycling = false
+	STUB_ALARM_WITH_LIGHTS = false
+	mqttClient             mqtt.Client
+	dbClient               *badger.DB
+	alarmIsCycling         = false
 )
 
 var stopCycle = make(chan bool)
 
 func StartService() {
-	fmt.Println("Starting alarm job...")
+	STUB_ALARM_WITH_LIGHTS = os.Getenv("STUB_ALARM_WITH_LIGHTS") == "true"
+
+	fmt.Println("Starting alarm job...", STUB_ALARM_WITH_LIGHTS)
 
 	mqttClient = utils.CreateMqttClient()
 	defer mqttClient.Disconnect(250)
@@ -124,7 +128,7 @@ func alarmCycle(stopCycle chan bool) {
 	unFire()
 
 	// Wait DEFAULT_REGRET_TIME seconds to regret the chooses of your life
-	timer.Reset(DEFAULT_REGRET_TIME * time.Second)
+	timer.Reset(DEFAULT_REGRET_TIME)
 	select {
 	case <-timer.C:
 		break
@@ -152,12 +156,20 @@ func alarmCycle(stopCycle chan bool) {
 
 func fire() {
 	fmt.Println("🔔 Alarm fired!")
-	mqttClient.Publish("dev/cabin-alarm/set", 0, false, "ON")
-	mqttClient.Publish("dev/van-alarm/set", 0, false, "ON")
+	if STUB_ALARM_WITH_LIGHTS {
+		mqttClient.Publish("dev/main-light/set", 0, false, "ON")
+	} else {
+		// mqttClient.Publish("dev/cabin-alarm/set", 0, false, "ON")
+		// mqttClient.Publish("dev/van-alarm/set", 0, false, "ON")
+	}
 }
 
 func unFire() {
 	fmt.Println("🔕 Alarm unfired!")
-	mqttClient.Publish("dev/cabin-alarm/set", 0, false, "OFF")
-	mqttClient.Publish("dev/van-alarm/set", 0, false, "OFF")
+	if STUB_ALARM_WITH_LIGHTS {
+		mqttClient.Publish("dev/main-light/set", 0, false, "OFF")
+	} else {
+		// mqttClient.Publish("dev/cabin-alarm/set", 0, false, "OFF")
+		// mqttClient.Publish("dev/van-alarm/set", 0, false, "OFF")
+	}
 }
